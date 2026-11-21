@@ -1,29 +1,24 @@
 name: CIFuzz
-on: 
+
+on:
   push:
-    branches: [ master, github-actions ]
+    branches: [master, github-actions]
   pull_request:
-    branches: [ master ]
-    
+    branches: [master]
+
 jobs:
   Fuzzing:
     runs-on: ubuntu-latest
     steps:
-    - name: Build Fuzzers
-      id: build
-      uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
-      with:
-        oss-fuzz-project-name: 'usrsctp'
-        dry-run: false
-    - name: Run Fuzzers
-      uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
-      with:
-        oss-fuzz-project-name: 'usrsctp'
-        fuzz-seconds: 600
-        dry-run: false
-    - name: Upload Crash
-      uses: actions/upload-artifact@v4
-      if: failure() && steps.build.outcome == 'success'
-      with:
-        name: artifacts
-        path: ./out/artifacts
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build-fuzz -DCMAKE_C_COMPILER=clang -Dsctp_build_programs=OFF -Dsctp_build_fuzzer=ON -Dsctp_sanitizer_address=ON -Dsctp_werror=OFF
+      - name: Build fuzzers
+        run: cmake --build build-fuzz --parallel 2 --target fuzzer_connect_multi fuzzer_listen fuzzer_fragment
+      - name: Fuzz
+        env:
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+        run: |
+          build-fuzz/fuzzer/fuzzer_connect_multi -runs=200 -timeout=10 fuzzer/CORPUS_CONNECT
+          build-fuzz/fuzzer/fuzzer_listen -runs=200 -timeout=10 fuzzer/CORPUS_LISTEN
+          build-fuzz/fuzzer/fuzzer_fragment -runs=200 -timeout=10 fuzzer/CORPUS_FRAGMENT
