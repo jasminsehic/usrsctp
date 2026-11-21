@@ -14273,6 +14273,17 @@ skip_preblock:
 				} else {
 					error = ENOTCONN;
 				}
+				if (sp != NULL) {
+					if (sp->data != NULL) {
+						sctp_m_freem(sp->data);
+						sp->data = NULL;
+					}
+					if (sp->net != NULL) {
+						sctp_free_remote_addr(sp->net);
+						sp->net = NULL;
+					}
+					sctp_free_a_strmoq(stcb, sp, SCTP_SO_LOCKED);
+				}
 				goto out;
 			}
 			if (error != 0) {
