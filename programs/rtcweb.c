@@ -126,6 +126,14 @@ struct peer_connection {
 #pragma warning( push )
 #pragma warning( disable : 4200 )
 #endif /* defined(_WIN32) && !defined(__MINGW32__) */
+struct rtcweb_datachannel_open_request_header {
+	uint8_t msg_type;
+	uint8_t channel_type;
+	uint16_t flags;
+	uint16_t reliability_params;
+	int16_t priority;
+} SCTP_PACKED;
+
 struct rtcweb_datachannel_open_request {
 	uint8_t msg_type; /* DATA_CHANNEL_OPEN_REQUEST */
 	uint8_t channel_type;
@@ -320,10 +328,10 @@ static int
 send_open_request_message(struct socket *sock, uint16_t o_stream, uint8_t unordered, uint16_t pr_policy, uint32_t pr_value)
 {
 	/* XXX: This should be encoded in a better way */
-	struct rtcweb_datachannel_open_request req;
+	struct rtcweb_datachannel_open_request_header req;
 	struct sctp_sndinfo sndinfo;
 
-	memset(&req, 0, sizeof(struct rtcweb_datachannel_open_request));
+	memset(&req, 0, sizeof(req));
 	req.msg_type = DATA_CHANNEL_OPEN_REQUEST;
 	switch (pr_policy) {
 	case SCTP_PR_SCTP_NONE:
@@ -351,7 +359,7 @@ send_open_request_message(struct socket *sock, uint16_t o_stream, uint8_t unorde
 	sndinfo.snd_flags = SCTP_EOR;
 	sndinfo.snd_ppid = htonl(DATA_CHANNEL_PPID_CONTROL);
 	if (usrsctp_sendv(sock,
-	                  &req, sizeof(struct rtcweb_datachannel_open_request),
+	                  &req, sizeof(req),
 	                  NULL, 0,
 	                  &sndinfo, (socklen_t)sizeof(struct sctp_sndinfo),
 	                  SCTP_SENDV_SNDINFO, 0) < 0) {
