@@ -81,6 +81,11 @@ option(sctp_sanitizer_memory "Compile with memory sanitizer" 0)
 
 option(sctp_build_fuzzer "Compile in clang fuzzing mode" 0)
 
+option(sctp_test_send_abort "Build the SCTP send/abort regression test" 0)
+if (sctp_test_send_abort)
+	add_definitions(-DSCTP_TEST_SEND_ABORT)
+endif ()
+
 if (sctp_sanitizer_address AND sctp_sanitizer_memory)
 	message(FATAL_ERROR "Can not compile with both sanitizer options")
 endif ()
@@ -281,4 +286,17 @@ endif ()
 
 if (sctp_build_fuzzer)
 	add_subdirectory(fuzzer)
+endif ()
+
+if (sctp_test_send_abort)
+	find_package(Threads REQUIRED)
+	enable_testing()
+	add_executable(test_send_abort
+		programs/test_send_abort.c
+		fuzzer/fuzzer_connect.c
+		programs/programs_helper.c
+	)
+	target_include_directories(test_send_abort PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/usrsctplib)
+	target_link_libraries(test_send_abort usrsctp ${CMAKE_THREAD_LIBS_INIT})
+	add_test(NAME send_abort_cleanup COMMAND test_send_abort)
 endif ()

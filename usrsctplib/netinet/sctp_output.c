@@ -13340,6 +13340,11 @@ sctp_copy_one(struct sctp_stream_queue_pending *sp,
 #endif
 }
 
+#if defined(SCTP_TEST_SEND_ABORT)
+int sctp_test_abort_next_send;
+int sctp_test_abort_reached;
+#endif
+
 static struct sctp_stream_queue_pending *
 sctp_copy_it_in(struct sctp_tcb *stcb,
     struct sctp_association *asoc,
@@ -14245,9 +14250,24 @@ skip_preblock:
 			SCTP_TCB_UNLOCK(stcb);
 			sp = sctp_copy_it_in(stcb, asoc, sndrcvninfo, uio, net, max_len, user_marks_eor, &error);
 			SCTP_TCB_LOCK(stcb);
+#if defined(SCTP_TEST_SEND_ABORT)
+			int test_abort = sctp_test_abort_next_send && sp != NULL && error == 0;
+			if (test_abort) {
+				sctp_test_abort_next_send = 0;
+				sctp_test_abort_reached = 1;
+			}
+#endif
 			if ((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) ||
-			    (asoc->state & SCTP_STATE_WAS_ABORTED)) {
-				if (asoc->state & SCTP_STATE_WAS_ABORTED) {
+			    (asoc->state & SCTP_STATE_WAS_ABORTED)
+#if defined(SCTP_TEST_SEND_ABORT)
+			    || test_abort
+#endif
+			    ) {
+				if ((asoc->state & SCTP_STATE_WAS_ABORTED)
+#if defined(SCTP_TEST_SEND_ABORT)
+				    || test_abort
+#endif
+				    ) {
 					/* XXX: Could also be ECONNABORTED, not enough info. */
 					error = ECONNRESET;
 				} else {

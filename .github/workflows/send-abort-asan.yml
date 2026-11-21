@@ -1,0 +1,19 @@
+name: Send abort leak
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  address-sanitizer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -Dsctp_build_programs=OFF -Dsctp_test_send_abort=ON -Dsctp_sanitizer_address=ON -Dsctp_werror=OFF
+      - name: Build
+        run: cmake --build build --parallel 2
+      - name: Regression test
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+        run: ctest --test-dir build --output-on-failure
